@@ -12,7 +12,7 @@ on:
     - cron: '0 17 * * *'
 env:
   REPO_URL: https://github.com/kiddin9/Kwrt
-  REPO_BRANCH: main
+  REPO_BRANCH: master
   CONFIG_FILE: configs/re-sp-01b.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
