@@ -32,4 +32,8 @@ sed -i "s/'UTC'/'CST-8'\n        set system.@system[-1].zonename='Asia\/Shanghai
 # ---------- 移除不需要的默认包（减小固件体积） ----------
 # sed -i 's/CONFIG_PACKAGE_luci-app-firewall=y/# CONFIG_PACKAGE_luci-app-firewall is not set/g' .config
 
+# ---------- 移除缺少依赖的包（避免编译报错） ----------
+rm -rf package/feeds/luci/luci-app-passwall
+rm -rf package/feeds/luci/luci-app-passwall2
+
 echo "===== diy-part2.sh 执行完成 ====="
