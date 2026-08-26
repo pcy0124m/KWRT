@@ -11,4 +11,14 @@ echo 'src-git turboacc https://github.com/chenmozhijin/turboacc.git' >> feeds.co
 # ---------- （可选）添加 OpenClash 源，需要的话取消注释 ----------
 # echo 'src-git openclash https://github.com/vernesong/OpenClash.git' >> feeds.conf.default
 
+# 更新feeds
+./scripts/feeds update -a
+./scripts/feeds install -a
+
+# 安装插件
+./scripts/feeds install luci-theme-argon
+./scripts/feeds install luci-app-argon-config
+./scripts/feeds install luci-app-turboacc
+./scripts/feeds install luci-compat
+
 echo "===== diy-part1.sh 执行完成 ====="
