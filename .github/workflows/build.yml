@@ -1,6 +1,5 @@
 名称: Build‑Kwrt‑RE‑SP‑01B
-权限:
-  内容: 编写
+
 开启:
   workflow_dispatch:
     输入:
@@ -8,25 +7,28 @@
         描述: "开启SSH调试tmate true/false"
         默认值: 'false'
         是否必填: false
-  调度计划:
+        类型: 字符串
+  调度:
     - cron: '0 17 * * *'
+
 env:
   REPO_URL: https://github.com/kiddin9/Kwrt
   REPO_BRANCH: master
  配置文件: configs/re-sp-01b.config
- DIY_P1_SH: diy‑part1.sh
+ DIY_P1_SH: diy-part1.sh
  DIY_P2_SH: diy-part2.sh
   UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: 真
- : 亚洲/上海
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+
 作业:
   build:
     runs-on: ubuntu-22.04
 步骤:
-      - 名称: 检出代码
+      - name: 检出代码
         用途: actions/checkout@v4
 
-      - 名称: 初始化环境
+      - name: 初始化环境
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -38,14 +40,14 @@ env:
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
 
-      - name: Clone Kwrt Source
-        working-directory: /workdir
-        run: |
+      - 名称: 克隆 Kwrt 源代码
+        工作目录: /workdir
+        运行: |
           set +e
           for i in 1 2 3
           do
             git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
-            if [ $? -eq 0 ];then
+            如果 [ $? -eq 0 ];那么
               break
             fi
             echo "git clone失败，第 $i 次重试，等待10秒..."
@@ -55,75 +57,76 @@ env:
           set -e
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-      - name: Run diy‑part1 feeds
-        run: |
-          chmod +x $DIY_P1_SH
-          cd openwrt
+      - 名称: Run diy‑part1 feeds
+        运行: |
+          chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH
+          切换到 openwrt 目录
           $GITHUB_WORKSPACE/$DIY_P1_SH
 
-      - name: Feeds update & install
-        run: |
-          cd openwrt
+      - 名称: 更新与安装软件源
+        运行: |
+          切换到 openwrt 目录
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: Load config & diy‑part2
         run: |
-          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-          chmod +x $DIY_P2_SH
+          [ -e $CONFIG_FILE ] && cp $CONFIG_FILE openwrt/.config
+          chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
           cd openwrt
           $GITHUB_WORKSPACE/$DIY_P2_SH
           make defconfig
           echo "==== 当前目标设备 ===="
           grep CONFIG_TARGET_DEVICE openwrt/.config
 
-      - name: Open SSH debug(tmate)
-        if: inputs.ssh == 'true'
-        uses: mxschmitt/action-tmate@v3
+      - 名称: 打开 SSH 调试（tmate）
+        如果: inputs.ssh == 'true'
+        使用: mxschmitt/action-tmate@v3
 
-      - name: Download source
-        run: |
-          cd openwrt
-          make download -j8
+      - 名称: 下载源代码
+        运行: |
+          切换到 openwrt 目录
+          执行 make download -j8 命令
 
-      - name: Compile firmware
+      - 名称: 编译固件
         id: compile
-        run: |
-          cd openwrt
+        运行: |
+          切换到 openwrt 目录
           make -j$(nproc) || make -j1 V=s
           echo "status=success" >> $GITHUB_OUTPUT
           grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
           [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
           echo "BUILD_DATE=_$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
 
-      - name: Organize firmware
+      - name: 整理固件
         id: organize
-        if: steps.compile.outputs.status == 'success'
-        run: |
+        如果: steps.compile.outputs.status == 'success'
+        运行: |
           cd openwrt/bin/targets/*/*
           rm -rf packages
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        if: steps.organize.outputs.status == 'success'
-        with:
-          name: Kwrt‑RE‑SP‑01B${{ env.BUILD_DATE }}
-          path: ${{ env.FIRMWARE_PATH }}
+      - name: 上传构件
+使用: actions/upload-artifact@v4
+如果: steps.organize.outputs.status == 'success'
+使用:
+名称: Kwrt‑RE‑SP‑01B${{ env.BUILD_DATE }}
+          路径: ${{ env.FIRMWARE_PATH }}
 
-      - name: Release tag
-        id: release_tag
-        if: env.UPLOAD_RELEASE == 'true'
-        run: |
+      - 名称: 发布标签
+id: rlease_tag
+如果: env.UPLOAD_RELEASE == 'true'
+        运行: |
           echo "tag=$(date +%Y.%m.%d-%H%M)" >> $GITHUB_OUTPUT
 
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v1
-        if: steps.release_tag.outputs.tag
+      - 名称: 上传至 GitHub 发布版
+        使用: softprops/action-gh-release@v1
+        如果: steps.release_tag.outputs.tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
-          files: ${{ env.FIRMWARE_PATH }}/*
-          generate_release_notes: true
+          文件: ${{ env.FIRMWARE_PATH }}/*
+          生成发布说明: 真
+
