@@ -76,10 +76,6 @@ jobs:
           cd openwrt
           $GITHUB_WORKSPACE/$DIY_P2_SH
           make defconfig
-          # 禁用 LEDE 默认勾选但缺少依赖的包
-          sed -i '/CONFIG_PACKAGE_luci-app-passwall/d' .config
-          echo '# CONFIG_PACKAGE_luci-app-passwall is not set' >> .config
-          make defconfig
           echo "==== 当前目标设备 ===="
           grep CONFIG_TARGET_DEVICE .config
 
