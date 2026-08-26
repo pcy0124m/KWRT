@@ -37,4 +37,11 @@ rm -rf package/feeds/luci/luci-app-passwall2 2>/dev/null
 # 清除 feeds.conf 中已不存在的 passwall2 源引用
 sed -i '/passwall2/d' feeds.conf.default 2>/dev/null
 
+# ---------- 移除编译失败的内核补丁 ----------
+# UVC 摄像头补丁与 LEDE 内核不兼容，删除后不影响基本功能
+find target/linux -name "*uvc*" -o -name "*iPassion*" -o -name "*iP2970*" 2>/dev/null | while read f; do
+  rm -f "$f" 2>/dev/null
+  echo "已删除补丁: $f"
+done
+
 echo "===== diy.sh 执行完成 ====="
