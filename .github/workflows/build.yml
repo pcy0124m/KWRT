@@ -1,7 +1,6 @@
 name: Build‑Kwrt‑RE‑SP‑01B
 permissions:
   contents: write
-
 on:
   workflow_dispatch:
     inputs:
@@ -11,7 +10,6 @@ on:
         required: false
   schedule:
     - cron: '0 17 * * *'
-
 env:
   REPO_URL: https://github.com/kiddin9/Kwrt
   REPO_BRANCH: main
@@ -35,20 +33,17 @@ jobs:
         run: |
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo apt-get -qq update
-          sudo apt-get -qq install $(curl -fsSL https://github.com/281677160/Actions-OpenWrt/raw/main/depends-ubuntu-2204)
+          sudo apt-get -qq install $(curl -fsSL https://mirror.ghproxy.com/https://github.com/281677160/Actions-OpenWrt/raw/main/depends-ubuntu-2204)
           sudo apt-get -qq autoremove --purge
           sudo timedatectl set-timezone $TZ
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
 
-         - name: Clone Kwrt Source
+      - name: Clone Kwrt Source
         working-directory: /workdir
         run: |
           git config --global url."https://mirror.ghproxy.com/https://github.com/".insteadOf "https://github.com/"
-          git clone $REPO_URL -b $REPO_BRANCH openwrt
-          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-
-          git clone $REPO_URL -b $REPO_BRANCH openwrt
+          git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
       - name: Run diy‑part1 feeds
@@ -70,6 +65,8 @@ jobs:
           cd openwrt
           $GITHUB_WORKSPACE/$DIY_P2_SH
           make defconfig
+          echo "==== 当前目标设备 ===="
+          grep CONFIG_TARGET_DEVICE openwrt/.config
 
       - name: Open SSH debug(tmate)
         if: inputs.ssh == 'true'
@@ -92,11 +89,12 @@ jobs:
 
       - name: Organize firmware
         id: organize
-        if: env.status == 'success'
+        if: steps.compile.outputs.status == 'success'
         run: |
           cd openwrt/bin/targets/*/*
           rm -rf packages
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -119,3 +117,4 @@ jobs:
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
           files: ${{ env.FIRMWARE_PATH }}/*
+          generate_release_notes: true
