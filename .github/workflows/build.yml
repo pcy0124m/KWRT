@@ -1,32 +1,32 @@
-name: Build‑Kwrt‑RE‑SP‑01B
-permissions:
-  contents: write
-on:
+名称: Build‑Kwrt‑RE‑SP‑01B
+权限:
+  内容: 编写
+开启:
   workflow_dispatch:
-    inputs:
+    输入:
       ssh:
-        description: "开启SSH调试tmate true/false"
-        default: 'false'
-        required: false
-  schedule:
+        描述: "开启SSH调试tmate true/false"
+        默认值: 'false'
+        是否必填: false
+  调度计划:
     - cron: '0 17 * * *'
 env:
   REPO_URL: https://github.com/kiddin9/Kwrt
   REPO_BRANCH: master
-  CONFIG_FILE: configs/re-sp-01b.config
-  DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: diy-part2.sh
+ 配置文件: configs/re-sp-01b.config
+ DIY_P1_SH: diy‑part1.sh
+ DIY_P2_SH: diy-part2.sh
   UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: true
-  TZ: Asia/Shanghai
-jobs:
+  UPLOAD_RELEASE: 真
+ : 亚洲/上海
+作业:
   build:
     runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+步骤:
+      - 名称: 检出代码
+        用途: actions/checkout@v4
 
-      - name: Init environment
+      - 名称: 初始化环境
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
