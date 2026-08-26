@@ -19,7 +19,6 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -33,7 +32,7 @@ jobs:
         run: |
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo apt-get -qq update
-          sudo apt-get -qq install $(curl -fsSL https://mirror.ghproxy.com/https://github.com/281677160/Actions-OpenWrt/raw/main/depends-ubuntu-2204)
+          sudo apt-get -qq install $(curl -fsSL https://github.com/281677160/Actions-OpenWrt/raw/main/depends-ubuntu-2204)
           sudo apt-get -qq autoremove --purge
           sudo timedatectl set-timezone $TZ
           sudo mkdir -p /workdir
@@ -42,8 +41,18 @@ jobs:
       - name: Clone Kwrt Source
         working-directory: /workdir
         run: |
-          git config --global url."https://mirror.ghproxy.com/https://github.com/".insteadOf "https://github.com/"
-          git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
+          set +e
+          for i in 1 2 3
+          do
+            git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
+            if [ $? -eq 0 ];then
+              break
+            fi
+            echo "git clone失败，第 $i 次重试，等待10秒..."
+            rm -rf openwrt
+            sleep 10
+          done
+          set -e
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
       - name: Run diy‑part1 feeds
