@@ -2,8 +2,6 @@ name: Build Kwrt for JDCloud RE-SP-01B
 
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: 0 16 * * *  # 北京时间每天 0:00 编译
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
