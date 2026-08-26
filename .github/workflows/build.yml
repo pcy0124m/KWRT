@@ -1,32 +1,32 @@
-名称: Build‑Kwrt‑RE‑SP‑01B
+name: Build‑Kwrt‑RE‑SP‑01B
 
-开启:
+on:
   workflow_dispatch:
-    输入:
+    inputs:
       ssh:
-        描述: "开启SSH调试tmate true/false"
-        默认值: 'false'
-        是否必填: false
-        类型: 字符串
-  调度:
+        description: "开启SSH调试tmate true/false"
+        default: 'false'
+        required: false
+        type: string
+  schedule:
     - cron: '0 17 * * *'
 
 env:
   REPO_URL: https://github.com/kiddin9/Kwrt
   REPO_BRANCH: master
- 配置文件: configs/re-sp-01b.config
- DIY_P1_SH: diy-part1.sh
- DIY_P2_SH: diy-part2.sh
+  CONFIG_FILE: configs/re-sp-01b.config
+  DIY_P1_SH: diy-part1.sh
+  DIY_P2_SH: diy-part2.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
 
-作业:
+jobs:
   build:
     runs-on: ubuntu-22.04
-步骤:
+    steps:
       - name: 检出代码
-        用途: actions/checkout@v4
+        uses: actions/checkout@v4
 
       - name: 初始化环境
         env:
@@ -40,14 +40,14 @@ env:
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
 
-      - 名称: 克隆 Kwrt 源代码
-        工作目录: /workdir
-        运行: |
+      - name: Clone Kwrt Source
+        working-directory: /workdir
+        run: |
           set +e
           for i in 1 2 3
           do
             git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
-            如果 [ $? -eq 0 ];那么
+            if [ $? -eq 0 ];then
               break
             fi
             echo "git clone失败，第 $i 次重试，等待10秒..."
@@ -57,15 +57,15 @@ env:
           set -e
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-      - 名称: Run diy‑part1 feeds
-        运行: |
+      - name: Run diy‑part1 feeds
+        run: |
           chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH
-          切换到 openwrt 目录
+          cd openwrt
           $GITHUB_WORKSPACE/$DIY_P1_SH
 
-      - 名称: 更新与安装软件源
-        运行: |
-          切换到 openwrt 目录
+      - name: Feeds update & install
+        run: |
+          cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
@@ -79,40 +79,40 @@ env:
           echo "==== 当前目标设备 ===="
           grep CONFIG_TARGET_DEVICE openwrt/.config
 
-      - 名称: 打开 SSH 调试（tmate）
-        如果: inputs.ssh == 'true'
-        使用: mxschmitt/action-tmate@v3
+      - name: Open SSH debug(tmate)
+        if: inputs.ssh == 'true'
+        uses: mxschmitt/action-tmate@v3
 
-      - 名称: 下载源代码
-        运行: |
-          切换到 openwrt 目录
-          执行 make download -j8 命令
+      - name: Download source
+        run: |
+          cd openwrt
+          make download -j8
 
-      - 名称: 编译固件
+      - name: Compile firmware
         id: compile
-        运行: |
-          切换到 openwrt 目录
+        run: |
+          cd openwrt
           make -j$(nproc) || make -j1 V=s
           echo "status=success" >> $GITHUB_OUTPUT
           grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
           [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
           echo "BUILD_DATE=_$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
 
-      - name: 整理固件
+      - name: Organize firmware
         id: organize
-        如果: steps.compile.outputs.status == 'success'
-        运行: |
+        if: steps.compile.outputs.status == 'success'
+        run: |
           cd openwrt/bin/targets/*/*
           rm -rf packages
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: 上传构件
-使用: actions/upload-artifact@v4
+        使用: actions/upload-artifact@v4
 如果: steps.organize.outputs.status == 'success'
 使用:
-名称: Kwrt‑RE‑SP‑01B${{ env.BUILD_DATE }}
-          路径: ${{ env.FIRMWARE_PATH }}
+          名称: Kwrt‑RE‑SP‑01B${{ env.BUILD_DATE }}
+: ${ env.FIRMWARE_PATH }}
 
       - 名称: 发布标签
 id: rlease_tag
