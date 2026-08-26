@@ -1,4 +1,4 @@
-name: Build‑Kwrt‑RE‑SP‑01B
+name: Build-Kwrt-RE-SP-01B
 
 on:
   workflow_dispatch:
@@ -57,7 +57,7 @@ jobs:
           set -e
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-      - name: Run diy‑part1 feeds
+      - name: Run diy-part1 feeds
         run: |
           chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH
           cd openwrt
@@ -69,7 +69,7 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Load config & diy‑part2
+      - name: Load config & diy-part2
         run: |
           [ -e $CONFIG_FILE ] && cp $CONFIG_FILE openwrt/.config
           chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
@@ -107,26 +107,26 @@ jobs:
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: 上传构件
-        使用: actions/upload-artifact@v4
-如果: steps.organize.outputs.status == 'success'
-使用:
-          名称: Kwrt‑RE‑SP‑01B${{ env.BUILD_DATE }}
-: ${ env.FIRMWARE_PATH }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: Kwrt-RE-SP-01B${{ env.BUILD_DATE }}
+          path: ${{ env.FIRMWARE_PATH }}
 
-      - 名称: 发布标签
-id: rlease_tag
-如果: env.UPLOAD_RELEASE == 'true'
-        运行: |
-          echo "tag=$(date +%Y.%m.%d-%H%M)" >> $GITHUB_OUTPUT
+      - name: Release tag
+        id: release_tag
+        if: env.UPLOAD_RELEASE == 'true'
+        run: |
+          # 增加时分秒，避免同一天重复tag报错
+          echo "tag=$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_OUTPUT
 
-      - 名称: 上传至 GitHub 发布版
-        使用: softprops/action-gh-release@v1
-        如果: steps.release_tag.outputs.tag
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: steps.release_tag.outputs.tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
-          文件: ${{ env.FIRMWARE_PATH }}/*
-          生成发布说明: 真
-
+          files: ${{ env.FIRMWARE_PATH }}/*
+          generate_release_notes: true
