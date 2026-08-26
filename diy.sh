@@ -34,5 +34,7 @@ sed -i "/zonename=/a\	set system.@system[-1].zonename='Asia\/Shanghai'" package/
 # ---------- 移除缺少依赖的包 ----------
 rm -rf package/feeds/luci/luci-app-passwall 2>/dev/null
 rm -rf package/feeds/luci/luci-app-passwall2 2>/dev/null
+# 清除 feeds.conf 中已不存在的 passwall2 源引用
+sed -i '/passwall2/d' feeds.conf.default 2>/dev/null
 
 echo "===== diy.sh 执行完成 ====="
