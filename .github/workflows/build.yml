@@ -41,9 +41,13 @@ jobs:
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
 
-      - name: Clone Kwrt Source
+         - name: Clone Kwrt Source
         working-directory: /workdir
         run: |
+          git config --global url."https://mirror.ghproxy.com/https://github.com/".insteadOf "https://github.com/"
+          git clone $REPO_URL -b $REPO_BRANCH openwrt
+          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
           git clone $REPO_URL -b $REPO_BRANCH openwrt
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
