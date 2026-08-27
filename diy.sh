@@ -44,4 +44,14 @@ find target/linux -name "*uvc*" -o -name "*iPassion*" -o -name "*iP2970*" 2>/dev
   echo "已删除补丁: $f"
 done
 
+# ---------- 修改固件品牌为 Kwrt ----------
+sed -i 's/OpenWrt/Kwrt/g' package/base-files/files/bin/config_generate 2>/dev/null
+sed -i 's/LEDE/Kwrt/g' package/base-files/files/bin/config_generate 2>/dev/null
+# 修改版本发布名称
+sed -i 's/OpenWrt/Kwrt/g' package/base-files/files/usr/lib/openwrt_release 2>/dev/null
+sed -i 's/LEDE/Kwrt/g' package/base-files/files/usr/lib/openwrt_release 2>/dev/null
+# 修改固件文件命名（ImageName）
+find include -name "*.mk" -exec sed -i 's/OpenWrt/Kwrt/g' {} \; 2>/dev/null
+find include -name "*.mk" -exec sed -i 's/LEDE/Kwrt/g' {} \; 2>/dev/null
+
 echo "===== diy.sh 执行完成 ====="
