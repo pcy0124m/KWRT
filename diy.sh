@@ -29,6 +29,9 @@ echo 'src-git turboacc https://github.com/chenmozhijin/turboacc.git' >> feeds.co
 # ---------- PassWall 依赖包源 ----------
 echo 'src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git' >> feeds.conf.default
 
+# ---------- OpenAppFilter 应用过滤源 ----------
+echo 'src-git oaf https://github.com/destan19/OpenAppFilter.git' >> feeds.conf.default
+
 # ---------- （可选）OpenClash 源 ----------
 # echo 'src-git openclash https://github.com/vernesong/OpenClash.git' >> feeds.conf.default
 
