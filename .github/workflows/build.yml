@@ -101,6 +101,9 @@ jobs:
           - 编译时间：${{ env.RELEASE_TAG }}
           - 默认 IP：192.168.12.1
           - 包含 iStore 软件中心、OpenAppFilter 应用过滤等
-        files: openwrt/bin/targets/*/*
+        files: |
+          openwrt/bin/targets/**/*.bin
+          openwrt/bin/targets/**/*.manifest
+          openwrt/bin/targets/**/sha256sums
         generate_release_notes: true
         make_latest: true
