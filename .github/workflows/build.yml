@@ -80,3 +80,27 @@ jobs:
       with:
         name: kwrt-jdcloud-re-sp-01b
         path: openwrt/bin/targets/
+
+    - name: Create Release Tag
+      id: tag
+      if: steps.compile.outputs.status == '0'
+      run: |
+        echo "RELEASE_TAG=v$(date +%Y.%m.%d-%H%M)" >> $GITHUB_ENV
+
+    - name: Upload to GitHub Release
+      uses: softprops/action-gh-release@v2
+      if: steps.compile.outputs.status == '0'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Kwrt 固件 ${{ env.RELEASE_TAG }}
+        body: |
+          ## Kwrt 固件 - 京东云 RE-SP-01B
+          - 源码：coolsnowwolf/lede
+          - 编译时间：${{ env.RELEASE_TAG }}
+          - 默认 IP：192.168.12.1
+          - 包含 iStore 软件中心、OpenAppFilter 应用过滤等
+        files: openwrt/bin/targets/*/*
+        generate_release_notes: true
+        make_latest: true
