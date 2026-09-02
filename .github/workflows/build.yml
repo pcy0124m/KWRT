@@ -67,14 +67,29 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        # 清理旧编译产物，强制重新生成固件
+        # 清理旧编译产物
         make clean 2>/dev/null || true
-        make -j$(nproc) && echo "status=0" >> $GITHUB_OUTPUT || {
-          make -j1 && echo "status=0" >> $GITHUB_OUTPUT || {
-            make -j1 V=s 2>&1 | tail -200
-            echo "status=$?" >> $GITHUB_OUTPUT
-          }
-        }
+        rm -rf bin 2>/dev/null || true
+        # 编译并输出详细日志
+        make -j$(nproc) V=s 2>&1 | tee build.log | tail -100
+        # 检查是否生成了固件文件
+        FIRMWARE_COUNT=$(find bin -name "*.bin" 2>/dev/null | wc -l)
+        echo "找到 $FIRMWARE_COUNT 个固件文件"
+        if [ "$FIRMWARE_COUNT" -gt 0 ]; then
+          echo "status=0" >> $GITHUB_OUTPUT
+          ls -la bin/targets/*/*/*.bin 2>/dev/null
+        else
+          # 再试一次单线程
+          echo "固件未生成，尝试单线程编译..."
+          make -j1 V=s 2>&1 | tee -a build.log | tail -100
+          FIRMWARE_COUNT=$(find bin -name "*.bin" 2>/dev/null | wc -l)
+          echo "找到 $FIRMWARE_COUNT 个固件文件"
+          if [ "$FIRMWARE_COUNT" -gt 0 ]; then
+            echo "status=0" >> $GITHUB_OUTPUT
+          else
+            echo "status=1" >> $GITHUB_OUTPUT
+          fi
+        fi
 
     - name: Organize firmware
       id: organize
