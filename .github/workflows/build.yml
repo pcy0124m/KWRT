@@ -74,22 +74,43 @@ jobs:
           }
         }
 
+    - name: Organize firmware
+      id: organize
+      if: steps.compile.outputs.status == '0'
+      run: |
+        cd openwrt
+        # 查找固件目录
+        FIRMWARE_DIR=$(find bin/targets -type d -name "mt7621" -o -type d -name "*jdcloud*" 2>/dev/null | head -1)
+        if [ -z "$FIRMWARE_DIR" ]; then
+          FIRMWARE_DIR=$(find bin/targets -type d -name "*" 2>/dev/null | head -1)
+        fi
+        echo "固件目录: $FIRMWARE_DIR"
+        if [ -n "$FIRMWARE_DIR" ] && [ -d "$FIRMWARE_DIR" ]; then
+          ls -la "$FIRMWARE_DIR/"
+          echo "FIRMWARE_PATH=$PWD/$FIRMWARE_DIR" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "未找到固件文件！"
+          find bin/targets -type f -name "*.bin" 2>/dev/null
+          echo "status=failed" >> $GITHUB_OUTPUT
+        fi
+
     - name: Upload firmware
       uses: actions/upload-artifact@v4
-      if: steps.compile.outputs.status == '0'
+      if: steps.organize.outputs.status == 'success'
       with:
         name: kwrt-jdcloud-re-sp-01b
-        path: openwrt/bin/targets/
+        path: ${{ env.FIRMWARE_PATH }}/
 
     - name: Create Release Tag
       id: tag
-      if: steps.compile.outputs.status == '0'
+      if: steps.organize.outputs.status == 'success'
       run: |
         echo "RELEASE_TAG=v$(date +%Y.%m.%d-%H%M)" >> $GITHUB_ENV
 
     - name: Upload to GitHub Release
       uses: softprops/action-gh-release@v2
-      if: steps.compile.outputs.status == '0'
+      if: steps.organize.outputs.status == 'success'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -101,9 +122,6 @@ jobs:
           - 编译时间：${{ env.RELEASE_TAG }}
           - 默认 IP：192.168.12.1
           - 包含 iStore 软件中心、OpenAppFilter 应用过滤等
-        files: |
-          openwrt/bin/targets/**/*.bin
-          openwrt/bin/targets/**/*.manifest
-          openwrt/bin/targets/**/sha256sums
+        files: ${{ env.FIRMWARE_PATH }}/*
         generate_release_notes: true
         make_latest: true
