@@ -67,44 +67,26 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        # 清理 bin 目录 + 镜像 stamp 文件，强制重新组装固件
-        rm -rf bin 2>/dev/null || true
-        find staging_dir -name ".stamp_target_*" -exec rm -f {} \; 2>/dev/null || true
-        # 编译（强制重新生成固件镜像）
-        make -j$(nproc) 2>&1 | tee build.log | tail -50
-        # 检查是否生成了固件文件
-        FIRMWARE_COUNT=$(find bin -name "*.bin" 2>/dev/null | wc -l)
-        echo "找到 $FIRMWARE_COUNT 个固件文件"
-        if [ "$FIRMWARE_COUNT" -gt 0 ]; then
-          echo "status=0" >> $GITHUB_OUTPUT
-          find bin -name "*.bin" -exec ls -lh {} \;
-        else
-          echo "status=1" >> $GITHUB_OUTPUT
-          echo "=== 调试信息 ==="
-          ls -la bin/targets/ 2>/dev/null || echo "bin/targets/ 不存在"
-          find bin -type f 2>/dev/null | head -20
-          echo "=== 查看 stamp 文件 ==="
-          find staging_dir -name "*.stamp_*" -type f 2>/dev/null | head -10
-        fi
+        make -j$(nproc) 2>&1 | tail -100
+        echo "status=$?" >> $GITHUB_OUTPUT
 
     - name: Organize firmware
       id: organize
       if: steps.compile.outputs.status == '0'
       run: |
         cd openwrt
-        # 查找固件目录
+        echo "=== 查找固件文件 ==="
+        find bin/targets -name "*.bin" -exec ls -lh {} \; 2>/dev/null || echo "未找到 .bin 文件"
+        ls -la bin/targets/*/*/ 2>/dev/null || echo "bin/targets/ 目录不存在"
         FIRMWARE_DIR=$(find bin/targets -type d -name "mt7621" -o -type d -name "*jdcloud*" 2>/dev/null | head -1)
         if [ -z "$FIRMWARE_DIR" ]; then
-          FIRMWARE_DIR=$(find bin/targets -type d -name "*" 2>/dev/null | head -1)
+          FIRMWARE_DIR=$(find bin/targets -maxdepth 3 -type d 2>/dev/null | head -1)
         fi
         echo "固件目录: $FIRMWARE_DIR"
         if [ -n "$FIRMWARE_DIR" ] && [ -d "$FIRMWARE_DIR" ]; then
-          ls -la "$FIRMWARE_DIR/"
           echo "FIRMWARE_PATH=$PWD/$FIRMWARE_DIR" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
         else
-          echo "未找到固件文件！"
-          find bin/targets -type f -name "*.bin" 2>/dev/null
           echo "status=failed" >> $GITHUB_OUTPUT
         fi
 
