@@ -67,9 +67,10 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        # 只清理 bin 目录，保留编译缓存
+        # 清理 bin 目录 + 镜像 stamp 文件，强制重新组装固件
         rm -rf bin 2>/dev/null || true
-        # 编译
+        find staging_dir -name ".stamp_target_*" -exec rm -f {} \; 2>/dev/null || true
+        # 编译（强制重新生成固件镜像）
         make -j$(nproc) 2>&1 | tee build.log | tail -50
         # 检查是否生成了固件文件
         FIRMWARE_COUNT=$(find bin -name "*.bin" 2>/dev/null | wc -l)
@@ -82,6 +83,8 @@ jobs:
           echo "=== 调试信息 ==="
           ls -la bin/targets/ 2>/dev/null || echo "bin/targets/ 不存在"
           find bin -type f 2>/dev/null | head -20
+          echo "=== 查看 stamp 文件 ==="
+          find staging_dir -name "*.stamp_*" -type f 2>/dev/null | head -10
         fi
 
     - name: Organize firmware
