@@ -7,33 +7,31 @@
 #       REPO_TOKEN 为可选(仅用于等待 op-packages 重新编译), 不填也能正常构建
 # =================================================
 shopt -s extglob
-
 # ---------- 内置 git_clone_path（Kwrt 官方工作流里 export 的函数） ----------
 function git_clone_path() {
-  trap 'rm -rf "$tmpdir"' EXIT
-  branch="$1" rurl="$2" mv="$3"
-  [[ "$mv" != "mv" ]] && shift 2 || shift 3
-  rootdir="$PWD"
-  tmpdir="$(mktemp -d)" || exit 1
-  if [ ${#branch} -lt 10 ]; then
-    git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$rurl" "$tmpdir"
-    cd "$tmpdir"
-  else
-    git clone --filter=blob:none --sparse "$rurl" "$tmpdir"
-    cd "$tmpdir"
-    git checkout $branch
-  fi
-  if [ "$?" != 0 ]; then
-    echo "error on $rurl"
-    exit 1
-  fi
-  git sparse-checkout init --cone
-  git sparse-checkout set $@
-  [[ "$mv" != "mv" ]] && cp -rn ./* $rootdir/ || mv -n $@/* $rootdir/$@/
-  cd $rootdir
+trap 'rm -rf "$tmpdir"' EXIT
+branch="$1" rurl="$2" mv="$3"
+[[ "$mv" != "mv" ]] && shift 2 || shift 3
+rootdir="$PWD"
+tmpdir="$(mktemp -d)" || exit 1
+if [ ${#branch} -lt 10 ]; then
+git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$rurl" "$tmpdir"
+cd "$tmpdir"
+else
+git clone --filter=blob:none --sparse "$rurl" "$tmpdir"
+cd "$tmpdir"
+git checkout $branch
+fi
+if [ "$?" != "0" ]; then
+echo "error on $rurl"
+exit 1
+fi
+git sparse-checkout init --cone
+git sparse-checkout set $@
+[[ "$mv" != "mv" ]] && cp -rn ./* $rootdir/ || mv -n $@/* $rootdir/$@/
+cd $rootdir
 }
 export -f git_clone_path
-
 # ---------- Kwrt 官方 diy.sh 正文 ----------
 sed -i '$a src-git kiddin9 https://github.com/kiddin9/op-packages.git;main' feeds.conf.default
 sed -i "/telephony/d" feeds.conf.default
@@ -97,4 +95,8 @@ sed -i "s/OpenWrt/Kwrt/g" package/base-files/files/bin/config_generate package/b
 sed -i -e "s/set \${s}.country='\${country || ''}'/set \${s}.country='\${country || \"CN\"}'/g" -e "s/set \${s}.disabled=.*/set \${s}.disabled='0'/" package/network/config/wifi-scripts/files/lib/wifi/mac80211.uc
 rm -rf package/feeds/packages/jool
 
-echo "=========== Kwrt diy.sh 执行完成 ==========="
+# ===== 精简默认包（覆盖 Kwrt 大包列表，适配 27328k 闪存） =====
+# 砍掉: advancedplus / package-manager / upnp / syscontrol / wizard / fan / filemanager / wifihistory / coremark / autocore / zram-swap / kmod-tcp-bbr / openssh-sftp-server / ds-lite / resolveip / luci-lib-ipkg / kmod-lib-zstd
+sed -i "s/DEFAULT_PACKAGES:=.*/DEFAULT_PACKAGES:=luci-base luci-compat luci-lib-fs luci-app-firewall wget-ssl curl htop nano bash block-mount swconfig /" include/target.mk
+
+echo "=========== Kwrt diy.sh 执行完成（精简版） ==========="
