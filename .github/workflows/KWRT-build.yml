@@ -56,7 +56,10 @@ jobs:
       run: |
         cd openwrt
         cp $GITHUB_WORKSPACE/config/Kwrt-jdcloud-re-sp-01b.config .config
+        # op-packages 库有递归依赖警告, defconfig 可能返回非零, 忽略之
+        set +e
         make defconfig
+        set -e
         echo "=== 校验设备是否被选中 ==="
         grep -E "CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_jdcloud_re-sp-01b|CONFIG_TARGET_MULTI_PROFILE" .config
         grep "CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_jdcloud_re-sp-01b=y" .config || { echo "!!! 设备未选中，请检查 config !!!"; exit 1; }
@@ -76,20 +79,15 @@ jobs:
         echo "=== 编译前资源 ==="
         free -h; df -h /
         set +e
-        # 先尝试并行编译（不输出详细日志，快且省空间）
+        # 并行编译, 不用 V=s (避免日志过大撑爆磁盘)
         make -j$(nproc) 2>&1 | tee build.log
         rc=${PIPESTATUS[0]}
-        if [ "$rc" != "0" ]; then
-          echo "=== 并行编译失败(rc=$rc)，降级单线程详细编译以定位错误 ==="
-          make -j1 V=s 2>&1 | tee -a build.log
-          rc=${PIPESTATUS[0]}
-        fi
         set -e
         echo "status=$rc" >> $GITHUB_OUTPUT
         echo "=== 错误摘要 ==="
         grep -iE "error:|Error [0-9]|failed|too big|too large|exceeds|No rule to make|Killed|OOM" build.log | tail -60 || echo "未找到明显错误"
-        echo "=== 编译日志末尾 80 行 ==="
-        tail -80 build.log
+        echo "=== 编译日志末尾 100 行 ==="
+        tail -100 build.log
         echo "=== 固件检查 ==="
         find bin/targets -name "*.bin" -exec ls -lh {} \; 2>/dev/null || echo "!!! 未生成 .bin 固件 !!!"
         exit $rc
