@@ -1,6 +1,6 @@
-name: Build Kwrt for JDCloud RE-SP-01B
-
-on: workflow_dispatch
+name: Build LEDE for JDCloud RE-SP-01B
+on:
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -10,26 +10,39 @@ env:
   REPO_BRANCH: master
   CONFIG_FILE: config/jdcloud-re-sp-01b.config
   DIY_SH: diy.sh
-  FREE_UP_DISK: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: false
   TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/pipx /usr/local/share/chromium /usr/local/share/powershell
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        df -h /
+
+    - name: Add swap (prevent OOM)
+      run: |
+        sudo swapoff -a || true
+        sudo rm -f /swapfile
+        sudo dd if=/dev/zero of=/swapfile bs=1M count=6144 status=progress
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        free -h
 
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo apt-get update
-        sudo apt-get -y install ack antlr3 asciidoc autoconf automake autopoint bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext git gcc-multilib g++-multilib gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz mkisofs nano python3 python3-pip python3-pexpect python3-yaml rsync sphinx-doc subversion swig texinfo uglifyjs upx-ucl unzip wget zlib1g-dev
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android
+        sudo apt-get -y install ack antlr3 asciidoc autoconf automake autopoint bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext git gcc-multilib g++-multilib gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz mkisofs nano python3 python3-pip python3-pexpect python3-yaml rsync subversion swig texinfo uglifyjs upx-ucl unzip wget zlib1g-dev
+        sudo rm -rf /etc/apt/sources.list.d/*
 
     - name: Clone source code
       run: |
@@ -39,9 +52,9 @@ jobs:
 
     - name: Apply patches
       run: |
-        cp $GITHUB_WORKSPACE/diy.sh openwrt/
+        cp $GITHUB_WORKSPACE/$DIY_SH openwrt/
         cd openwrt
-        bash diy.sh
+        bash $DIY_SH
 
     - name: Download feeds
       run: |
@@ -54,44 +67,62 @@ jobs:
         cd openwrt
         cp $GITHUB_WORKSPACE/$CONFIG_FILE .config
         make defconfig
+        echo "=== 校验设备 ==="
+        grep "CONFIG_TARGET_ramips_mt7621_DEVICE_jdcloud_re-sp-01b=y" .config || { echo "!!! 设备未选中 !!!"; exit 1; }
 
     - name: Download package
-      id: package
       run: |
         cd openwrt
         make download -j8
         find dl -size -1024c -exec ls -la {} \;
         find dl -size -1024c -exec rm -f {} \;
+        df -h /
 
     - name: Compile
       id: compile
       run: |
         cd openwrt
-        # 并行编译，搜索镜像相关输出
-        make -j$(nproc) V=s 2>&1 | tee build.log | grep -E "image|Image|bin|Bin|squashfs|error|Error" | tail -100
-        echo "=== 搜索错误 ==="
-        grep -i "error\|failed" build.log | tail -20 || echo "未找到错误"
-        echo "=== 固件目录 ==="
-        ls -la bin/targets/*/*/ 2>/dev/null || echo "目录不存在"
-        echo "status=$?" >> $GITHUB_OUTPUT
+        echo "=== 编译前资源 ==="
+        free -h; df -h /
+        set +e
+        make -j$(nproc) V=s 2>&1 | tee build.log
+        rc=${PIPESTATUS[0]}
+        if [ "$rc" != "0" ]; then
+          echo "=== 并行编译失败(rc=$rc)，降级单线程详细编译 ==="
+          make -j1 V=s 2>&1 | tee -a build.log
+          rc=${PIPESTATUS[0]}
+        fi
+        set -e
+        echo "status=$rc" >> $GITHUB_OUTPUT
+        echo "=== 错误摘要 ==="
+        grep -iE "error:|Error [0-9]|failed|too big|too large|exceeds|No rule to make|Killed" build.log | tail -60 || echo "未找到明显错误"
+        echo "=== 编译日志末尾 80 行 ==="
+        tail -80 build.log
+        echo "=== 固件检查 ==="
+        find bin/targets -name "*.bin" -exec ls -lh {} \; 2>/dev/null || echo "!!! 未生成 .bin 固件 !!!"
+        exit $rc
+
+    - name: Upload build.log on failure
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: lede-build-log
+        path: openwrt/build.log
 
     - name: Organize firmware
       id: organize
       if: steps.compile.outputs.status == '0'
       run: |
         cd openwrt
-        echo "=== 查找固件文件 ==="
-        find bin/targets \( -name "*.bin" -o -name "*.gz" \) -exec ls -lh {} \; 2>/dev/null || echo "未找到固件文件"
-        ls -la bin/targets/*/*/ 2>/dev/null || echo "bin/targets/ 目录不存在"
-        FIRMWARE_DIR=$(find bin/targets -type d -name "mt7621" -o -type d -name "*jdcloud*" 2>/dev/null | head -1)
-        if [ -z "$FIRMWARE_DIR" ]; then
-          FIRMWARE_DIR=$(find bin/targets -maxdepth 3 -type d 2>/dev/null | head -1)
-        fi
-        echo "固件目录: $FIRMWARE_DIR"
-        if [ -n "$FIRMWARE_DIR" ] && [ -d "$FIRMWARE_DIR" ]; then
+        FIRMWARE_DIR="bin/targets/ramips/mt7621"
+        if [ -d "$FIRMWARE_DIR" ] && [ -n "$(find $FIRMWARE_DIR -name '*.bin' 2>/dev/null | head -1)" ]; then
+          echo "固件目录: $PWD/$FIRMWARE_DIR"
+          ls -lh $FIRMWARE_DIR
           echo "FIRMWARE_PATH=$PWD/$FIRMWARE_DIR" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
         else
+          echo "!!! 固件目录为空或不存在 !!!"
+          ls -la $FIRMWARE_DIR 2>/dev/null || true
           echo "status=failed" >> $GITHUB_OUTPUT
         fi
 
@@ -99,5 +130,5 @@ jobs:
       uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success'
       with:
-        name: kwrt-jdcloud-re-sp-01b
+        name: lede-jdcloud-re-sp-01b
         path: ${{ env.FIRMWARE_PATH }}/
