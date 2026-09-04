@@ -67,19 +67,10 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        # 删除 stamp 文件，强制重新组装固件
-        find staging_dir -name ".stamp_target_install" -delete 2>/dev/null || true
-        find staging_dir -name ".stamp_image_*" -delete 2>/dev/null || true
-        # 编译（利用缓存，只重新组装镜像）
-        make -j$(nproc) 2>&1 | tail -200
-        STATUS=$?
-        # 检查是否有固件
-        BIN_COUNT=$(find bin/targets -name "*.bin" 2>/dev/null | wc -l)
-        echo "找到 $BIN_COUNT 个固件文件"
-        if [ "$BIN_COUNT" -eq 0 ] && [ "$STATUS" -eq 0 ]; then
-          echo "=== 尝试强制镜像组装 ==="
-          make target/linux/install V=s 2>&1 | tail -100
-        fi
+        # 删除所有 stamp 文件，强制重新编译
+        find staging_dir -name ".stamp_*" -delete 2>/dev/null || true
+        # 单线程详细编译，看到完整过程
+        make -j1 V=s 2>&1 | tail -200
         echo "status=$?" >> $GITHUB_OUTPUT
 
     - name: Organize firmware
@@ -108,5 +99,3 @@ jobs:
       with:
         name: kwrt-jdcloud-re-sp-01b
         path: ${{ env.FIRMWARE_PATH }}/
-        generate_release_notes: true
-        make_latest: true
