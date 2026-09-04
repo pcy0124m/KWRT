@@ -69,8 +69,14 @@ jobs:
         cd openwrt
         # 删除所有 stamp 文件，强制重新编译
         find staging_dir -name ".stamp_*" -delete 2>/dev/null || true
-        # 单线程详细编译，看到完整过程
-        make -j1 V=s 2>&1 | tail -200
+        # 单线程详细编译，完整日志保存到文件
+        make -j1 V=s 2>&1 | tee build.log
+        # 搜索错误关键词
+        echo "=== 搜索错误 ==="
+        grep -i "error\|failed\|too big\|too large\|exceeds\|image.*not" build.log | tail -50 || echo "未找到明显错误"
+        echo "=== 固件文件检查 ==="
+        find bin/targets -name "*.bin" -o -name "*.gz" 2>/dev/null | head -20
+        ls -la bin/targets/*/*/ 2>/dev/null | head -20
         echo "status=$?" >> $GITHUB_OUTPUT
 
     - name: Organize firmware
