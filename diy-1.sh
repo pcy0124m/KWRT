@@ -49,7 +49,7 @@ package/base-files/files/lib/upgrade/keep.d/base-files-essential
 sed -i -e '/^\/etc\/profile/d' \
 -e '/^\/etc\/shinit/d' \
 package/base-files/Makefile
-sed -i "s/192.168.1/10.0.0/" package/base-files/files/bin/config_generate
+sed -i "s/192.168.1/192.168.12/" package/base-files/files/bin/config_generate
 sed -i "s#false; \\\#true; \\\#" include/download.mk
 wget -N https://github.com/immortalwrt/immortalwrt/raw/refs/heads/openwrt-25.12/package/kernel/linux/modules/video.mk -P package/kernel/linux/modules/
 wget -N https://github.com/immortalwrt/immortalwrt/raw/refs/heads/openwrt-25.12/package/network/utils/nftables/patches/002-nftables-add-fullcone-expression-support.patch -P package/network/utils/nftables/patches/
