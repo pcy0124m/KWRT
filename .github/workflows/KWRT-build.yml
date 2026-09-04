@@ -52,6 +52,18 @@ jobs:
         cd openwrt
         bash diy-1.sh
 
+    - name: Fix op-packages recursive deps
+      run: |
+        cd openwrt
+        # op-packages 库部分包有自依赖/循环依赖 bug, 会导致 kconfig 崩溃丢弃目标配置
+        # 这些包我们不需要, 直接移除
+        for pkg in luci-app-ssr-plus luci-app-passwall luci-app-ipsec-server luci-app-torbp snmpd-ssl quectel-cm libnetsnmp-ssl luci-app-passwall2; do
+          find feeds package/feeds -maxdepth 3 -name "$pkg" -exec rm -rf {} + 2>/dev/null
+          echo "removed: $pkg"
+        done
+        echo "=== feeds 目录 ==="
+        ls feeds/
+
     - name: Apply config
       run: |
         cd openwrt
