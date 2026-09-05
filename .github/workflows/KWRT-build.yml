@@ -69,21 +69,18 @@ jobs:
       run: |
         cd openwrt
         cp $GITHUB_WORKSPACE/config/Kwrt-jdcloud-re-sp-01b.config .config
-        # op-packages 库有递归依赖警告, defconfig 可能返回非零, 忽略之
         set +e
         make defconfig
         set -e
-        echo "=== defconfig 后所有 TARGET 相关行 ==="
-        grep -E "^CONFIG_TARGET" .config || echo "(无 TARGET 行)"
-        echo "=== 检查设备符号 ==="
-        if grep -q "CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_jdcloud_re-sp-01b=y" .config; then
-          echo "设备已选中 (MULTI_PROFILE 格式)"
-        elif grep -q "CONFIG_TARGET_ramips_mt7621_DEVICE_jdcloud_re-sp-01b=y" .config; then
-          echo "设备已选中 (lede 单设备格式)"
+        echo "=== TARGET 行 ==="
+        grep -E "^CONFIG_TARGET" .config | head -20 || echo "(无)"
+        echo "=== 设备校验 ==="
+        if grep -q "CONFIG_TARGET_ramips_mt7621_DEVICE_jdcloud_re-sp-01b=y" .config; then
+          echo "设备已选中"
         else
-          echo "!!! 设备未选中, 列出 ramips/mt7621 可用设备 ==="
-          grep -i "jdcloud\|re-sp" .config || echo "(未找到 jdcloud/re-sp 相关符号)"
-          grep "CONFIG_TARGET_DEVICE_ramips_mt7621" .config | head -20 || echo "(无 MULTI_PROFILE 设备列表)"
+          echo "!!! 设备未选中, 搜索可用设备 ==="
+          grep -i "jdcloud\|re-sp" .config || echo "(无 jdcloud 符号)"
+          grep "CONFIG_TARGET_.*_DEVICE_" .config | head -10 || echo "(无设备符号)"
           exit 1
         fi
 
