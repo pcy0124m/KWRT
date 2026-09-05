@@ -55,6 +55,9 @@ jobs:
         cp $GITHUB_WORKSPACE/$DIY_SH openwrt/
         cd openwrt
         bash $DIY_SH
+        # 移除与内核 5.10.268 冲突的补丁 (gpio-ralink 已在内核中)
+        rm -f target/linux/ramips/patches-5.10/802-GPIO-MIPS-ralink-add-gpio-driver-for-ralink-SoC.patch
+        echo "patched, removed conflicting 802 patch"
 
     - name: Download feeds
       run: |
