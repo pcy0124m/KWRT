@@ -52,14 +52,16 @@ jobs:
         cd openwrt
         bash diy-1.sh
 
-    - name: Remove op-packages feed (recursive dep bugs break kconfig)
+    - name: Remove kiddin9 feed (recursive dep bugs break kconfig)
       run: |
         cd openwrt
-        # op-packages 库大量自依赖/循环依赖 bug 会导致 kconfig 崩溃丢弃目标配置
-        # 整个移除, iStore 刷完后手动安装
-        rm -rf feeds/op-packages package/feeds/op-packages
-        sed -i '/op-packages/d' feeds.conf.default
+        # op-packages 库实际目录名是 kiddin9, 之前删错了目录名导致没删掉
+        rm -rf feeds/kiddin9 package/feeds/kiddin9
+        sed -i '/kiddin9/d; /op-packages/d' feeds.conf.default
+        echo "=== feeds.conf.default ==="
         cat feeds.conf.default
+        echo "=== feeds 目录 ==="
+        ls feeds/
         echo "=== 重新安装 feeds ==="
         ./scripts/feeds update -a
         ./scripts/feeds install -a
