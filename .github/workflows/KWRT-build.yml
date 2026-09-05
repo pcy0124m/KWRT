@@ -46,26 +46,15 @@ jobs:
         cd openwrt
         git submodule update --init --recursive || true
 
-    - name: Apply Kwrt diy (adds op-packages feed + patches)
-      run: |
-        cp $GITHUB_WORKSPACE/diy-1.sh openwrt/
-        cd openwrt
-        bash diy-1.sh
-
-    - name: Remove kiddin9 feed (recursive dep bugs break kconfig)
+    - name: Download feeds (plain OpenWrt, no diy patches)
       run: |
         cd openwrt
-        # op-packages 库实际目录名是 kiddin9, 之前删错了目录名导致没删掉
-        rm -rf feeds/kiddin9 package/feeds/kiddin9
-        sed -i '/kiddin9/d; /op-packages/d' feeds.conf.default
-        echo "=== feeds.conf.default ==="
-        cat feeds.conf.default
-        echo "=== feeds 目录 ==="
-        ls feeds/
-        echo "=== 重新安装 feeds ==="
+        # 不使用 diy-1.sh (lede 补丁会破坏 openwrt-25.12 目标配置)
+        # 只用官方默认 feeds
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-        echo "done"
+        echo "feeds installed"
+        ls feeds/
 
     - name: Apply config
       run: |
